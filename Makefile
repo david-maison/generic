@@ -1,11 +1,11 @@
 # * Tools and Flags
 
 INCLUDES=
-OCAMLFLAGS=$(INCLUDES) -custom -w +44-40
-OCAMLOPTFLAGS=$(INCLUDES)
+OCAMLFLAGS=$(INCLUDES) -bin-annot -annot -custom -w +44-40 -opaque
+OCAMLOPTFLAGS=$(INCLUDES) -bin-annot -annot -w +44-40 -opaque
 
-OCAMLC=ocamlc $(OCAMLFLAGS)
-OCAMLOPT=ocamlopt $(OCAMLOPTFLAGS)
+OCAMLC=ocamlc.opt $(OCAMLFLAGS)
+OCAMLOPT=ocamlopt.opt $(OCAMLOPTFLAGS)
 OCAMLDEP=ocamldep $(INCLUDES)
 OCAMLDOC=ocamldoc.opt $(INCLUDES) -w +44-40 -ppx ./import
 
@@ -23,12 +23,16 @@ define occ=
 $(OCAMLC) -c $< -ppx ./import
 endef
 
+define occ_opt=
+$(OCAMLOPT) -c $< -ppx ./import
+endef
+
 define occ_reify=
 $(occ) -ppx ./reify
 endef
 
 define link=
-$(OCAMLC) -o $@  $^
+$(OCAMLC) -o $@ -I . $^
 endef
 
 define occ_ppx=
@@ -36,7 +40,7 @@ ocamlc -c -I +compiler-libs -ppx $(METAQUOT) $<
 endef
 
 define link_ppx=
-ocamlc -o $@ -I +compiler-libs ocamlcommon.cma $^
+ocamlc -o $@ -I . -I +compiler-libs ocamlcommon.cma $^
 endef
 
 
@@ -139,6 +143,8 @@ generic_test_show\
 # interfaces for the independent files
 OTHER_MLI=
 
+LIB_GENERIC=generic.cma generic.cmxa libgeneric.a generic.a
+
 # * Rules
 .PHONY: lib tests doc ppx clean
 #.SECONDARY: $(ML:.ml=.cmo) $(OTHER_ML:.ml=.cmo)
@@ -146,12 +152,20 @@ OTHER_MLI=
 all: ppx lib tests doc
 doc: $(DOC)/index.html import # doc/dep.dot
 ppx: reify import
-lib: ppx generic.cma
+lib: ppx $(LIB_GENERIC)
 tests: ppx test_marshal test_show test_multiplate
 
+# TODO: fix the weird circular dependency
+install: META $(LIB_GENERIC) reify import $(NSI) $(MLI) $(NS:.ml=.cmi) $(ML:.ml=.cmi) $(NS:.ml=.cmt) $(ML:.ml=.cmt)
+	ocamlfind install generic $^
+
+uninstall:
+	ocamlfind remove generic
+
 # Library (bytecode)
-generic.cma: generic_util_obj_stub.o $(NS:.ml=.cmo) $(ML:.ml=.cmo)
-	$(OCAMLC) -custom -o $@ -a $^
+$(LIB_GENERIC): generic_util_obj_stub.o $(NS:.ml=.cmo) $(ML:.ml=.cmo) $(NS:.ml=.cmx) $(ML:.ml=.cmx)
+	ocamlmklib -custom -o generic $^
+
 
 # PPX
 
@@ -227,6 +241,9 @@ $(NS:.ml=.ml.dep): %.ml.dep: %.ml
 %.cmo: %.ml import
 	$(occ)
 
+%.cmx: %.ml import
+	$(occ_opt)
+
 %.cmi: %.mli
 	$(occ)
 
@@ -239,6 +256,9 @@ $(NS:.ml=.ml.dep): %.ml.dep: %.ml
 $(NS:.ml=.cmo): %.cmo: %.ml
 	$(OCAMLC) -no-alias-deps -w A-49 -c $<
 
+$(NS:.ml=.cmx): %.cmx: %.ml
+	$(OCAMLOPT) -no-alias-deps -w A-49 -c $<
+
 $(NSI:.mli=.cmi): %.cmi: %.mli
 	$(OCAMLC) -no-alias-deps -w A-49 -c $<
 
@@ -249,15 +269,20 @@ $(NSI:.mli=.cmi): %.cmi: %.mli
 
 # * Include Dependencies
 
+ifeq ($(MAKECMDGOALS), clean)
+else
+ifneq ($(MAKECMDGOALS), uninstall)
 -include $(ML:.ml=.ml.dep)
 -include $(MLI:.mli=.mli.dep)
 -include $(NS:.ml=.ml.dep)
 -include $(NSI:.mli=.mli.dep)
 -include $(OTHER_ML:.ml=.ml.dep)
 -include $(OTHER_MLI:.mli=.mli.dep)
+endif
+endif
 
 # * Clean up
 
 clean:
-	rm -f test_marshal reify
-	rm -f *.cm[ioxa] *.dep *.o
+	rm -f test_marshal test_multiplate test_show reify import
+	rm -f *.cm[ioxat]* *.dep *.o *.a *.annot

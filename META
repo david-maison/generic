@@ -1,0 +1,7 @@
+requires = ""
+description = "A Generic Programming Library for OCaml"
+version = "undefined"
+archive(byte) = "generic.cma"
+archive(native) = "generic.cmxa"
+plugin(byte) = "generic.cma"
+plugin(native) = "generic.cmxa"
