@@ -369,8 +369,11 @@ module Ext = struct
    *)
   let find : 'a extensible -> 'a -> Obj.t * 'a Con.t
     = fun ext v ->
-    try let (k,{con}) = H.find ext.cons (Objx.ext_con_name (Obj.repr v))
-        in (k, con ext.ty)
+    try
+      let name = (Objx.ext_con_name (Obj.repr v)) in
+(* Format.printf "TRYING TO FIND %s@." name; *)
+      let (k,{con}) = H.find ext.cons name in
+      (k, con ext.ty)
     with Match_failure _ -> raise Not_found
 
   (* Replace an extensible constructor with the one stored in

@@ -1,8 +1,8 @@
 # * Tools and Flags
 
 INCLUDES=
-OCAMLFLAGS=$(INCLUDES) -bin-annot -annot -custom -w +44-40 -opaque
-OCAMLOPTFLAGS=$(INCLUDES) -bin-annot -annot -w +44-40 -opaque
+OCAMLFLAGS=$(INCLUDES) -bin-annot -annot -custom -w +44-40 -opaque -g
+OCAMLOPTFLAGS=$(INCLUDES) -bin-annot -annot -w +44-40 -opaque -g
 
 OCAMLC=ocamlc.opt $(OCAMLFLAGS)
 OCAMLOPT=ocamlopt.opt $(OCAMLOPTFLAGS)
